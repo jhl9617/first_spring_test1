@@ -32,7 +32,7 @@ public class FileDownloadView extends AbstractView {
         String fileName = downFile.getName();
 
         //클라이언트로 전송하기 위한 설정
-        response.setContentType("text/plain; charset=utf-8");
+        response.setContentType("text/plain; charset=UTF-8");
         response.addHeader("Content-Disposition", "attachment; filename=\""
                 + new String(fileName.getBytes(StandardCharsets.UTF_8), StandardCharsets.ISO_8859_1) +"\"");
         response.setContentLength((int)renameFile.length());

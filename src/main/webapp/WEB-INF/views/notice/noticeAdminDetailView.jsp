@@ -34,7 +34,7 @@
 					<c:param name="ofile" value="${ notice.original_filepath  }"/>
 					<c:param name="rfile" value="${ notice.rename_filepath  }"/>
 				</c:url>
-				<a href="${  nfd }">${ notice.notice.original_filepath  }</a>
+				<a href="${ nfd }">${ notice.original_filepath  }</a>
 			</c:if>
 			<!-- 첨부파일이 없다면 공백 출력 처리 -->
 			<c:if test="${ empty notice.original_filepath }">
@@ -43,7 +43,7 @@
 		</td>
 	</tr>
 	<tr>
-		<th>내 용</th><td>${ notice.notice.contnet}</td>
+		<th>내 용</th><td>${ notice.noticecontent}</td>
 	</tr>
 	<tr>
 		<th colspan="2"><button onclick="javascrpt:history.go(-1);">목록</button>

@@ -1,9 +1,11 @@
 package org.ict.first.notice.controller;
 
 import java.io.File;
+import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.net.URLEncoder;
 import java.net.http.HttpRequest;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 
 import javax.servlet.http.HttpServletRequest;
@@ -24,6 +26,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseBody;
+import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.servlet.ModelAndView;
 
 
@@ -140,6 +143,7 @@ public class NoticeController {
 			model.addAttribute("notice", notice);
 			
 			Member loginMember = (Member) session.getAttribute("loginMember");
+
 			if(loginMember != null && loginMember.getAdmin().equals("Y")) {
 				//로그인 한 관리자가 요청했다면
 				return "notice/noticeAdminDetailView";
@@ -157,7 +161,7 @@ public class NoticeController {
 	@RequestMapping("nfdown.do")
 	public ModelAndView fileDownMethod(ModelAndView mv, HttpServletRequest request, @RequestParam("ofile") String originalFileName, @RequestParam("rfile") String renameFileName) {
 		//공지사항 첨부파일 저장폴더에 대한 경로(path) 지정
-		String savePath = request.getSession().getServletContext().getRealPath("resources/notice_upfiles");		//el 코드로 하면 짧음
+		String savePath = request.getSession().getServletContext().getRealPath("resources/notice_upfiles");	//el 코드로 하면 짧음
 
 		//저장 폴더에서 읽을 파일에 대한 파일 객체 생성함
 		File renameFile = new File(savePath + "\\" + renameFileName);
@@ -170,7 +174,186 @@ public class NoticeController {
 		mv.addObject("originFile", originalFile);
 		return mv;
 	}
-	
-	
-	
+
+	//공지글 수정페이지로 이동 요청 처리용
+	@RequestMapping("nmoveup.do")
+	public String moveUpdatepage(@RequestParam("noticeno") int noticeno,Model model) {
+		//수정 페이지에 출력할 해당 공지글 다시 조회함
+		Notice notice = noticeService.selectNotice(noticeno);
+
+		if(notice != null) {
+			model.addAttribute("notice", notice);
+			return "notice/noticeUpdateForm";
+		}else {
+			model.addAttribute("message", noticeno + "번 공지글 수정페이지 이동 실패");
+			return "common/error";
+		}
+
+
+	}
+
+	//공지글 수정요청처리용 (파일 업로드기능 사용)---------------------------------------------
+	@RequestMapping(value="nupdate.do", method= RequestMethod.POST)
+	public String noticeUpdateMethod(Notice notice, Model model, HttpServletRequest request,
+									 @RequestParam(name="delflag", required=false) String delFlag,
+									 @RequestParam(name="upfile", required=false) MultipartFile mfile) {
+		//공지사항 첨부파일 저장폴더 경로지정
+		String savePath = request.getSession().getServletContext().getRealPath("resources/notice_upfiles");
+
+		//★★첨부파일이 수정처리된 경우----------
+		//1. 원래 첨부파일이 있는데 '파일삭제' 체크박스를 선택한 경우
+		if(notice.getOriginal_filepath() != null  &&  delFlag != null  && delFlag.equals("yes")) {
+			//notice에 이미 첨부파일이 있다면?   (  원래 첨부파일이 있음 && delFlag전송온값이 있음(뭔가체크했음) && delFlag에 'yes'라고 선택했다면  )
+			//저장 폴더에 있는 파일을 삭제한다
+			new File(savePath + "\\" + notice.getRename_filepath()).delete();      //file(바뀐파일명가져와서 지우기 )
+
+			//notice의 이전 파일정보도 삭제한다
+			notice.setOriginal_filepath(null);
+			notice.setRename_filepath(null);
+		}//if
+
+		//2. 공지글 첨부파일은 1개만 첨부 가능할 때, 새로운 첨부파일이 있는 경우(원래 첨부파일이 있든&없든)
+		if(!mfile.isEmpty()) {      //새로운 첨부파일이 있다면?
+
+			//2-1. 이전 첨부파일이 있었다면?
+			if(notice.getOriginal_filepath() != null) {   //이전 첨부파일이 있다면
+				//저장폴더에 있는 이전파일을 삭제한다
+				new File(savePath + "\\" + notice.getRename_filepath()).delete();
+				//notice의 이전 파일정보도 삭제한다
+				notice.setOriginal_filepath(null);
+				notice.setRename_filepath(null);
+			}//if
+
+
+			//2-2. 이전 첨부파일이 없었다면? => 바로 폴더에 저장하면 됨
+			//전송온 파일이름 추출을 먼저 한다
+			String fileName = mfile.getOriginalFilename();         //getOriginalFilename() => 파일이름만 추출할때 사용하는 메소드
+
+			//transferTo() 메소드를 이용해서 바로 저장한다면? (덮어쓰기됨) mfile.transferTo(new File(savePath + "\\" + fileName + exexexex));
+			//다른 공지글의 첨부파일과 파일명이 중복되는 경우 => 덮어쓰기 되는것을 막기 위해, 파일명을 변경해서 폴더에 저장하는 방식을 사용할 수 있음
+			//변경파일명 : 년월일시분초.확장자   => 이렇게 처리한다.
+			if(fileName !=null && fileName.length() > 0)  {   //파일명에 파일name이 정확하게 들어왔다면,
+				//바꿀 파일명에 대한 문자열만들기 작업
+				//공지글 등록 | 수정 요청시점의 날짜시간정보를 이용함
+				SimpleDateFormat sdf = new SimpleDateFormat("yyyyMMddHHmmss");      //포멧 문자열 데이터를 만들어준다
+				//변경할 파일명 만들기
+				String renameFileName = sdf.format(new java.sql.Date(System.currentTimeMillis()));      //System.currentTimeMillis()을 통해, 시스템으로부터 현재시간날짜를 가져온다.
+				logger.info("변경 파일명 : " + renameFileName);
+				//원본 파일의 확장자를 추출해서, 변경파일명에 붙여주는 작업(pdf, java, 등등)
+				renameFileName += "." + fileName.substring(fileName.lastIndexOf(".") + 1);
+				//fileName.lastIndexOf(".") => 뒤에서부터 처음만나는 . 이 '파일명'과 '확장자'를 구분하는 기준임 // +1 => 그 다음 글자부터 // substring => 끝글자까지 추출해라
+				logger.info("변경 파일명 : " + renameFileName);
+
+				//파일객체 만들기
+				File renameFile = new File(savePath + "\\" + renameFileName);
+
+				//폴더에 저장처리
+				//예외처리를 Controller에서 직접 하겠다면? => exception처리를 해주며, catch파트에서 에러내용 처리를 해준다.
+				try {
+					mfile.transferTo(renameFile);
+				} catch (Exception e) {
+					e.printStackTrace();
+					model.addAttribute("message", "첨부파일 저장 실패!");
+					return "common/error";
+				}//try
+
+				//notice객체에 첨부파일 정보 기록 저장
+				notice.setOriginal_filepath(fileName);            //원래파일명 저장함
+				notice.setRename_filepath(renameFileName);   //바뀐파일명 저장함
+			}//if  //이름바꾸기
+		}//if      //새로운 첨부파일이 있을때
+
+		if(noticeService.updateNotice(notice) > 0) {
+			//공지글 수정 성공시 목록보기 페이지로 이동
+			return "redirect:nlist.do";
+		}else{
+			model.addAttribute("message", notice.getNoticeno() + "번 공지글 수정 실패!");
+			return "common/error";
+		}//if
+	}//method close
+
+	//공지글 삭제 요청 처리용
+	@RequestMapping("ndel.do")
+	public String noticeDeleteMethod(@RequestParam("noticeno") int noticeno,
+									 @RequestParam(name ="rfile", required = false) String renameFileName,
+									 Model model, HttpServletRequest request) {
+		if(noticeService.deleteNotice(noticeno) > 0) {
+			//첨부된 파일이 있는 공지일 때는 저장 폴더에 있는 첨부 파일도 삭제함
+			if(renameFileName != null){
+				String savePath = request.getSession().getServletContext().getRealPath("resources/notice_upfiles");
+				new File(savePath + "\\" +renameFileName).delete();
+			}
+			return "redirect:nlist.do";
+		}else {
+			model.addAttribute("message", noticeno + "번 공지 삭제 실패!");
+			return "common/error";
+		}
+	}
+
+	//새 공지글 등록 페이지로 이동 처리용
+	@RequestMapping("movewriter.do")
+	public String moveWritePage() {
+		return "notice/noticeWriterForm";
+	}
+
+	//공지글 등록 요청 처리용 ( 파일 업로드 기능 사용)
+
+	//새 공지글 등록요청처리용 (파일 업로드기능 사용)---------------------------------------------
+	@RequestMapping(value="ninsert.do", method= RequestMethod.POST)
+	public String noticeInsertMethod(Notice notice, Model model, HttpServletRequest request,               //request => 첨부파일 저장폴더 경로지정용
+									 @RequestParam(name="upfile", required=false) MultipartFile mfile) {      //upfile => 첨부파일 저장용
+		//공지사항 첨부파일 저장폴더 경로지정
+		String savePath = request.getSession().getServletContext().getRealPath("resources/notice_upfiles");
+
+
+		//첨부파일이 있을때
+		if(!mfile.isEmpty()) {      //새로운 첨부파일이 있다면?
+			//전송온 파일이름 추출을 먼저 한다
+			String fileName = mfile.getOriginalFilename();         //getOriginalFilename() => 파일이름만 추출할때 사용하는 메소드
+
+			//transferTo() 메소드를 이용해서 바로 저장한다면? (덮어쓰기됨) mfile.transferTo(new File(savePath + "\\" + fileName + exexexex));
+			//다른 공지글의 첨부파일과 파일명이 중복되는 경우 => 덮어쓰기 되는것을 막기 위해, 파일명을 변경해서 폴더에 저장하는 방식을 사용할 수 있음
+			//변경파일명 : 년월일시분초.확장자   => 이렇게 처리한다.
+			if(fileName !=null && fileName.length() > 0)  {   //파일명에 파일name이 정확하게 들어왔다면,
+				//바꿀 파일명에 대한 문자열만들기 작업
+				//새 공지글 등록 | 수정 요청시점의 날짜시간정보를 이용함
+				SimpleDateFormat sdf = new SimpleDateFormat("yyyyMMddHHmmss");      //포멧 문자열 데이터를 만들어준다
+				//변경할 파일명 만들기
+				String renameFileName = sdf.format(new java.sql.Date(System.currentTimeMillis()));      //System.currentTimeMillis()을 통해, 시스템으로부터 현재시간날짜를 가져온다.
+				logger.info("변경 파일명 : " + renameFileName);
+				//원본 파일의 확장자를 추출해서, 변경파일명에 붙여주는 작업(pdf, java, 등등)
+				renameFileName += "." + fileName.substring(fileName.lastIndexOf(".") + 1);
+				//fileName.lastIndexOf(".") => 뒤에서부터 처음만나는 . 이 '파일명'과 '확장자'를 구분하는 기준임 // +1 => 그 다음 글자부터 // substring => 끝글자까지 추출해라
+				logger.info("변경 파일명 : " + renameFileName);
+
+				//파일객체 만들기
+				File renameFile = new File(savePath + "\\" + renameFileName);
+
+				//폴더에 저장처리
+				//예외처리를 Controller에서 직접 하겠다면? => exception처리를 해주며, catch파트에서 에러내용 처리를 해준다.
+				try {
+					mfile.transferTo(renameFile);
+				} catch (Exception e) {
+					e.printStackTrace();
+					model.addAttribute("message", "첨부파일 저장 실패!");
+					return "common/error";
+				}//try
+
+				//notice객체에 첨부파일 정보 기록 저장
+				notice.setOriginal_filepath(fileName);            //원래파일명 저장함
+				notice.setRename_filepath(renameFileName);   //바뀐파일명 저장함
+			}//if  //이름바꾸기
+		}//if      //새로운 첨부파일이 있을때
+
+		if(noticeService.insertNotice(notice) > 0) {
+			//새 공지글 등록 성공시 목록보기 페이지로 이동
+			return "redirect:nlist.do";
+		}else{
+			model.addAttribute("message", notice.getNoticeno() + "새 공지글 등록 실패!");
+			return "common/error";
+		}//if
+	}//method close
+
+
+
 }	//Controller

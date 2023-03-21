@@ -43,6 +43,14 @@
 	<beans:property name="order" value="0"/>
 	</beans:bean>
 
+	<!-- 파일 업로드용 클래스 등록 : 업로드시 파일 용량 제한 설정도 해야 함(10Mbyte 로 지정해 봄) -->
+	<beans:bean class="org.springframework.web.multipart.commons.CommonsMultipartResolver" id="multipartResolver">
+		<beans:property name="maxUploadSize" value="10000000"/>
+	</beans:bean>
+
+
+
+
 	<context:component-scan base-package="org.ict.first" />
 	
 	

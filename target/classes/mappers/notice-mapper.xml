@@ -54,7 +54,30 @@
 		order by noticeno desc
 		</select>
 		<select id="selectLast"></select>
-		<insert id="insertNotice"></insert>
-		<update id="updateNotice"></update>
-		<delete id="deleteNotice"></delete>
+		<insert id="insertNotice" parameterType="Notice">
+			insert into NOTICE (NOTICENO, NOTICETITLE, NOTICEWRITER, NOTICEDATE, NOTICECONTENT, ORIGINAL_FILEPATH, RENAME_FILEPATH)
+			values ((select max(NOTICENO) + 1 from NOTICE),
+			        #{noticetitle}, #{noticewriter}, SYSDATE,
+			        #{noticecontent}, #{original_filepath, jdbcType=VARCHAR},
+			        #{rename_filepath, jdbcType=VARCHAR})
+		</insert>
+		<update id="updateNotice" parameterType="Notice">
+			update notice
+			set noticetitle = #{noticetitle},
+			    NOTICECONTENT = #{noticecontent},
+				NOTICEDATE = sysdate
+-- 			<if test="original_filepath != null">	/*파일 추가*/
+				, ORIGINAL_FILEPATH = #{original_filepath}
+				, RENAME_FILEPATH = #{rename_filepath}
+			</if>
+			<if test="original_filepath == null">	/*있었는데 삭제하는 경우*/
+				, ORIGINAL_FILEPATH = null
+				, RENAME_FILEPATH = null
+			</if>
+			where noticeno = #{noticeno}
+		</update>
+		<delete id="deleteNotice" parameterType="_int">
+			delete from NOTICE
+			where NOTICENO = #{akldnjaojkfna}
+		</delete>
 </mapper>
