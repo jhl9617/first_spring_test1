@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE configuration PUBLIC
+"-//mybatis.org//DTD Config 3.0//EN"
+"http://mybatis.org/dtd/mybatis-3-config.dtd">
+<configuration>
+	
+	<!-- 마이바티스가 null을 처리못하기때문에, 처리할 수 있게 하는 구문  -->
+<settings>
+      <setting name="jdbcTypeForNull" value="NULL"/>
+      <setting name="cacheEnabled" value="false"/>
+</settings>
+	
+
+	<!-- typeAliases : mapper에서 사용할 vo 클래스에 대한 줄입말 선언 -->
+	<!-- 심각: Context initialized 이벤트를 [org.springframework.web.context.ContextLoaderListener] 클래스의 인스턴스인 리스너에 전송하는 동안 예외 발생 
+			org.springframework.beans.factory.BeanCreationException: Error creating bean with name 'sqlSession' defined in class path resource [root-context.xml]: .......블라블라
+			=> ★★★없는 파일을 먼저 만들어두면 이와같은 에러 발생됨 -->
+	<typeAliases>
+		<typeAlias type="org.ict.first.notice.model.vo.Notice" alias="Notice" /> 
+		<typeAlias type="org.ict.first.member.model.vo.Member" alias="Member" />
+		<typeAlias type="org.ict.first.common.SearchDate" alias="SearchDate" />
+		<typeAlias type="org.ict.first.common.Searchs" alias="Searchs" />
+		<typeAlias type="org.ict.first.board.model.vo.Board" alias="Board" />
+	</typeAliases>
+	
+
+<!-- 	<environments default="development">	db 연결파트임 (스프링과 연결해서쓸때는 사용하지 않는다=>각각 파트에서 따로따로 처리하기 때문임) -->
+<!-- 		<environment id="development"> -->
+<!-- 			<transactionManager type="JDBC" /> -->
+<!-- 			<dataSource type="POOLED"> -->
+<!-- 				<property name="driver" value="com.mysql.jdbc.Driver" /> -->
+<!-- 				<property name="url" value="jdbc:mysql://localhost:3306/world" /> -->
+<!-- 				<property name="username" value="root" /> -->
+<!-- 				<property name="password" value="root" /> -->
+<!-- 			</dataSource> -->
+<!-- 		</environment> -->
+<!-- 	</environments> -->
+
+
+	<!-- mapper : 실행할 쿼리문만 별도로 작성하는 파일을 말함! -->
+	<mappers>
+		<mapper resource="mappers/board-mapper.xml" />		
+		<mapper resource="mappers/member-mapper.xml" />
+		<mapper resource="mappers/notice-mapper.xml" />
+	</mappers>
+	
+	
+</configuration>

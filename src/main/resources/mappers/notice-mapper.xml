@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE mapper PUBLIC
+"-//mybatis.org//DTD Mapper 3.0//EN"
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="noticeMapper">
+
+	<resultMap type="Notice" id="resultNotice">
+		<id property="noticeno" column="noticeno"/>
+		<result property="noticetitle" column="noticetitle"/>
+		<result property="noticedate" column="noticedate"/>
+		<result property="noticewriter" column="noticewriter"/>
+		<result property="noticecontent" column="noticecontent"/>
+		<result property="original_filepath" column="original_filepath"/>
+		<result property="rename_filepath" column="rename_filepath"/>
+	</resultMap>
+	
+	<resultMap type="Notice" id="selectNewTop5">
+		<id property="noticeno" column="noticeno"/>
+		<result property="noticetitle" column="noticetitle"/>
+		<result property="noticedate" column="noticedate"/>
+
+	</resultMap>
+	
+		<select id="selectNewTop5" resultMap="selectNewTop5">		<!-- <![CDATA[]]> xml 에서 비교연산자가 들어가면 오류가 나기 때문에 이렇게 묶어야 함 -->
+		<![CDATA[
+			select *
+			from(select rownum rnum, noticeno, noticetitle, noticedate
+			from (select * from notice
+			order by noticedate desc, noticeno desc))
+			where rnum > =1 and rnum <= 5
+			]]>
+		</select>
+		<select id="selectAll" resultMap="resultNotice">		<!-- 위에 만들어놓은 resultmap을 사용 -->
+			select * from notice
+			order by noticeno desc
+		</select>
+		<select id="selectNotice" parameterType="_int" resultMap="resultNotice">
+			select * from notice 
+			where noticeno = #{ noticeno }
+		</select>
+		<select id="selectSearchTitle" parameterType="string" resultMap="resultNotice">
+		select * from notice 
+		where noticetitle like '%' || #{ keyword } || '%'
+		order by noticeno desc
+		</select>
+		<select id="selectSearchWriter" parameterType="string" resultMap="resultNotice">
+		select * from notice 
+		where noticewriter like '%' || #{ keyword } || '%'
+		order by noticeno desc
+		</select>
+		<select id="selectSearchDate" parameterType="SearchDate" resultMap="resultNotice">
+		select * from notice 
+		where noticedate between #{ begin } -1 and #{ end } + 1
+		order by noticeno desc
+		</select>
+		<select id="selectLast"></select>
+		<insert id="insertNotice"></insert>
+		<update id="updateNotice"></update>
+		<delete id="deleteNotice"></delete>
+</mapper>

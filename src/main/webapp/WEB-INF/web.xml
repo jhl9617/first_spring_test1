@@ -1,0 +1,74 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<web-app version="2.5" xmlns="http://java.sun.com/xml/ns/javaee"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://java.sun.com/xml/ns/javaee; https://java.sun.com/xml/ns/javaee/web-app_2_5.xsd ">
+
+	
+	
+	<!-- 웰컴파일 등록하기 : 절대 오타내면 안됨  => 프레임워크는 jsp파일만 웰컴파일로 지정 가능함!-->
+	<welcome-file-list>
+		<welcome-file>index.jsp</welcome-file>
+	</welcome-file-list>
+	
+	
+	<!-- 분단위 자동로그아웃 설정 -->
+	<session-config>
+		<session-timeout>10</session-timeout>		<!-- 10분뒤 자동로그아웃됨 -->
+	</session-config>
+	
+	
+	<!-- The definition of the Root Spring Container shared by all Servlets and Filters -->
+	<context-param>
+		<param-name>contextConfigLocation</param-name>		<!-- 이 어플리케이션 처음 구동시키는 설정파일의 위치 설정함 => 서블릿 컨트롤하는 파일임-->
+		<param-value>classpath:root-context.xml</param-value>			
+		<!--     ㄴ> param-value에 작성함 : 여기서 db연결 설정을 한다. 
+		=> root-context.xml파일을 src/main/resources 경로로 보통 옮겨둔다. (이쪽에 db정보를 다 옮겨두기 때문임) 
+		=> 옮긴 후에는 기존의 spring밑에있는 root-context.xml파일은 삭제한다
+		=>  기존 경로였던 /WEB-INF/spring/root-context.xml 을 classpath:root-context.xml로 바꿔준다. (classpath는 java를 뜻함)-->
+	</context-param>
+	
+	
+	
+	<!-- Creates the Spring Container shared by all Servlets and Filters -->
+	<listener>
+		<listener-class>org.springframework.web.context.ContextLoaderListener</listener-class>
+	</listener>
+
+
+
+	<!-- post로 전송오는 한글데이터 인코딩 처리를 위한 필터클래스  -->
+	<!-- 서블릿 가기전에 실행되는 클래스를 '필터'라고 함 =>이미 Spring에서 만들어져있음  
+	filter와 filter-mapping클래스를 세트로 사용해야함-->
+	<filter>
+		<filter-name>encodingFilter</filter-name>
+		<filter-class>org.springframework.web.filter.CharacterEncodingFilter</filter-class>
+		<init-param>			<!-- 초기값에 따른 파라메터 전달 -->
+		<param-name>encoding</param-name>				<!-- 변수값은 encoding으로 한다 -->
+		<param-value>UTF-8</param-value>					<!-- 전달값 -->
+		</init-param>	
+	</filter>
+	<filter-mapping>
+		<filter-name>encodingFilter</filter-name>
+		<url-pattern>*.do</url-pattern>	
+	</filter-mapping>
+	
+
+
+	<!-- Processes application requests //Spring이 제공하는 Servlet클래스 => 이름은 DispatcherServlet이며, 자동실행됨.-->
+	<servlet>
+		<servlet-name>appServlet</servlet-name>
+		<servlet-class>org.springframework.web.servlet.DispatcherServlet</servlet-class>
+		<init-param>
+			<param-name>contextConfigLocation</param-name>
+			<param-value>/WEB-INF/spring/appServlet/servlet-context.xml</param-value>
+		</init-param>
+		<load-on-startup>1</load-on-startup>
+	</servlet>
+		
+		
+	<servlet-mapping>
+		<servlet-name>appServlet</servlet-name>
+		<url-pattern>*.do</url-pattern>		<!-- *:모든요청에 대해서 // .do 가 붙어서 들어오는 요청들은 // appServlet으로 연결시키겠다.-->
+	</servlet-mapping>
+
+</web-app>
